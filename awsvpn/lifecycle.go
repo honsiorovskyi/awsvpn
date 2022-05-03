@@ -70,7 +70,7 @@ func (a *App) lifecycle(srvCtx context.Context) {
 			a.handleDisconnect()
 		case CmdConnect:
 			a.handleConnect(srvCtx)
-		case StatusDisconnected, StatusConnected:
+		case StatusDisconnected, StatusConnected, StatusConnecting, StatusDisconnecting:
 			a.st.Update(msg.Type())
 		default:
 			log.Println("[AWS VPN] ", msg.Error())
