@@ -11,8 +11,9 @@ import (
 const terminationTimeout = 5 * time.Second
 
 type App struct {
-	busCh  chan Message
-	dataCh chan string
+	busCh      chan Message
+	dataCh     chan string
+	authLinkCh chan string
 
 	s          scheduler
 	st         status
@@ -92,8 +93,9 @@ func NewApp(cfg openvpn.Config, browserCmd string) (*App, error) {
 	}
 
 	return &App{
-		busCh:  make(chan Message),
-		dataCh: make(chan string),
+		busCh:      make(chan Message),
+		dataCh:     make(chan string),
+		authLinkCh: make(chan string),
 
 		cfg:        cfg,
 		st:         status{status: StatusDisconnected},

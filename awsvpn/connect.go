@@ -5,12 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os/exec"
 )
-
-func (a *App) open(url string) error {
-	return exec.Command("sh", "-c", fmt.Sprintf("%s %s", a.browserCmd, url)).Start()
-}
 
 func (a *App) connect(ctx context.Context) error {
 	log.Println("[AWS VPN] Performing SAML handshake...")
@@ -19,11 +14,16 @@ func (a *App) connect(ctx context.Context) error {
 		return fmt.Errorf("connect: %w", err)
 	}
 
-	log.Println("[AWS VPN] Reponse recieved, opening authentication link...")
-	a.open(authLink)
+	log.Println("[AWS VPN] Reponse with the auth link recieved")
+	a.authLinkCh <- authLink
 
 	log.Println("[AWS VPN] Waiting for SAML Response...")
-	samlReponse := <-a.dataCh
+	var samlReponse string
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("connect: %w", ctx.Err())
+	case samlReponse = <-a.dataCh:
+	}
 
 	notifyCh := make(chan int)
 	go func() {
