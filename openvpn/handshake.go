@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"syscall"
 	"time"
 )
@@ -36,6 +37,12 @@ func parseHandshakeResponse(b []byte) (string, string, error) {
 }
 
 func Handshake(ctx context.Context, c Config) (string, string, error) {
+	conf, err := c.pipe()
+	if err != nil {
+		return "", "", fmt.Errorf("handshake: %w", err)
+	}
+	defer conf.Close()
+
 	auth, err := newTextSourcePipe("N/A\nACS::35001\n")
 	if err != nil {
 		return "", "", fmt.Errorf("handshake: %w", err)
@@ -46,18 +53,17 @@ func Handshake(ctx context.Context, c Config) (string, string, error) {
 	defer killProcess()
 
 	cmd := exec.CommandContext(cmdCtx, c.Command,
-		"--config", c.ConfigFile,
+		"--config", "/dev/fd/3",
 		"--verb", "3",
 		"--proto", c.Proto,
-		"--remote", c.Remote,
-		c.Port,
-		"--auth-user-pass", "/dev/fd/3",
+		"--remote", c.Remote, strconv.Itoa(c.Port),
+		"--auth-user-pass", "/dev/fd/4",
 		"--connect-retry-max", "1",
 	)
 
 	// cmd.Stderr = os.Stderr
 	// cmd.Stdout = os.Stdout
-	cmd.ExtraFiles = []*os.File{auth.source}
+	cmd.ExtraFiles = []*os.File{conf.source, auth.source}
 
 	go func() {
 		<-ctx.Done()

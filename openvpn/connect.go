@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -18,6 +19,12 @@ const (
 )
 
 func Connect(ctx context.Context, c Config, sid string, samlResponse string, notifyCh chan int) error {
+	conf, err := c.pipe()
+	if err != nil {
+		return fmt.Errorf("openvpn: %w", err)
+	}
+	defer conf.Close()
+
 	auth, err := newTextSourcePipe(fmt.Sprintf("N/A\nCRV1::%s::%s\n", sid, samlResponse))
 	if err != nil {
 		return fmt.Errorf("openvpn: %w", err)
@@ -28,17 +35,16 @@ func Connect(ctx context.Context, c Config, sid string, samlResponse string, not
 	defer killProcess()
 
 	cmd := exec.CommandContext(cmdCtx, c.Command,
-		"--config", c.ConfigFile,
+		"--config", "/dev/fd/3",
 		"--verb", "3",
 		"--auth-nocache",
 		"--inactive", "3600",
 		"--proto", c.Proto,
-		"--remote", c.Remote,
-		c.Port,
-		"--auth-user-pass", "/dev/fd/3",
+		"--remote", c.Remote, strconv.Itoa(c.Port),
+		"--auth-user-pass", "/dev/fd/4",
 	)
 
-	cmd.ExtraFiles = []*os.File{auth.source}
+	cmd.ExtraFiles = []*os.File{conf.source, auth.source}
 	cmd.Stderr = os.Stderr
 
 	stdout, err := cmd.StdoutPipe()
