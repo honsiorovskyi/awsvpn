@@ -200,6 +200,8 @@ func (a *App) httpConnectHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) httpStatusHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+
 	switch a.st.Get() {
 	case StatusDisconnected:
 		w.Write([]byte("{\"status\": \"disconnected\"}\n"))
