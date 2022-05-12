@@ -18,7 +18,7 @@ function tag(text, bg, fg) {
         color: bg
     })
 
-    if (fg) {
+    if (fg && browser.browserAction.setBadgeTextColor) {
         browser.browserAction.setBadgeTextColor({
             color: fg
         })
@@ -71,6 +71,7 @@ async function monitor() {
         }
     } catch (e) {
         tag("err", red)
+        console.log("error", e)
         return
     }
 }
@@ -79,6 +80,11 @@ function closeVPNTab(tabId, changeInfo, tab) {
     if (changeInfo.url === "http://127.0.0.1:35001/") {
         browser.tabs.remove(tabId);
     }
+}
+
+// handle chromium
+if (typeof globalThis.browser === "undefined" || Object.getPrototypeOf(globalThis.browser) !== Object.prototype) {
+    browser = chrome
 }
 
 browser.tabs.onUpdated.addListener(closeVPNTab) 
