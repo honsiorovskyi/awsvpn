@@ -17,35 +17,53 @@ var (
 	authLinkRegexp         = regexp.MustCompile("(https{0,1}://.+)[:\n]{0,1}.*$")
 )
 
-func parseHandshakeResponse(b []byte) (string, string, error) {
+type AuthParams struct {
+	RemoteIP          string
+	HandshakeResponse HandshakeResponse
+}
+
+type HandshakeResponse struct {
+	SID      string
+	AuthLink string
+}
+
+func parseHandshakeResponse(b []byte) (*HandshakeResponse, error) {
 	resp := samlHandshakeRespRegex.FindStringSubmatch(string(b))
 	if len(resp) < 2 {
-		return "", "", fmt.Errorf("recieved empty response")
+		return nil, fmt.Errorf("recieved empty response")
 	}
 
 	sid := sidRegexp.FindStringSubmatch(resp[1])
 	if len(sid) < 2 {
-		return "", "", fmt.Errorf("unable to parse SID")
+		return nil, fmt.Errorf("unable to parse SID")
 	}
 
 	authLink := authLinkRegexp.FindStringSubmatch(resp[1])
 	if len(authLink) < 2 {
-		return "", "", fmt.Errorf("unable to parse auth link")
+		return nil, fmt.Errorf("unable to parse auth link")
 	}
 
-	return sid[1], authLink[1], nil
+	return &HandshakeResponse{
+		SID:      sid[1],
+		AuthLink: authLink[1],
+	}, nil
 }
 
-func Handshake(ctx context.Context, c Config) (string, string, error) {
+func Handshake(ctx context.Context, c Config) (*AuthParams, error) {
+	remoteIP, err := resolveRemoteIP(c.Remote)
+	if err != nil {
+		return nil, fmt.Errorf("handshake: %w", err)
+	}
+
 	conf, err := c.pipe()
 	if err != nil {
-		return "", "", fmt.Errorf("handshake: %w", err)
+		return nil, fmt.Errorf("handshake: %w", err)
 	}
 	defer conf.Close()
 
 	auth, err := newTextSourcePipe("N/A\nACS::35001\n")
 	if err != nil {
-		return "", "", fmt.Errorf("handshake: %w", err)
+		return nil, fmt.Errorf("handshake: %w", err)
 	}
 	defer auth.Close()
 
@@ -56,7 +74,7 @@ func Handshake(ctx context.Context, c Config) (string, string, error) {
 		"--config", "/dev/fd/3",
 		"--verb", "3",
 		"--proto", c.Proto,
-		"--remote", c.Remote, strconv.Itoa(c.Port),
+		"--remote", remoteIP, strconv.Itoa(c.Port),
 		"--auth-user-pass", "/dev/fd/4",
 		"--connect-retry-max", "1",
 	)
@@ -75,13 +93,16 @@ func Handshake(ctx context.Context, c Config) (string, string, error) {
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", "", fmt.Errorf("handshake error: %w", err)
+		return nil, fmt.Errorf("handshake error: %w", err)
 	}
 
-	sid, authLink, err := parseHandshakeResponse(out)
+	hr, err := parseHandshakeResponse(out)
 	if err != nil {
-		return "", "", fmt.Errorf("handshake error: %w", err)
+		return nil, fmt.Errorf("handshake error: %w", err)
 	}
 
-	return sid, authLink, nil
+	return &AuthParams{
+		RemoteIP:          remoteIP,
+		HandshakeResponse: *hr,
+	}, nil
 }

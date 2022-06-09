@@ -4,7 +4,6 @@ import (
 	"awsvpn/openvpn"
 	"context"
 	"log"
-	"net"
 	"time"
 )
 
@@ -80,14 +79,6 @@ func (a *App) lifecycle(srvCtx context.Context) {
 }
 
 func NewApp(cfg openvpn.Config, browserCmd string) (*App, error) {
-	if net.ParseIP(cfg.Remote) == nil {
-		var err error
-		cfg.Remote, err = resolveRemoteIP(cfg.Remote)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	if cfg.TerminationTimeout == 0 {
 		cfg.TerminationTimeout = terminationTimeout
 	}

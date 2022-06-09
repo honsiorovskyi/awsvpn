@@ -18,14 +18,14 @@ const (
 	ConnClosed
 )
 
-func Connect(ctx context.Context, c Config, sid string, samlResponse string, notifyCh chan int) error {
+func Connect(ctx context.Context, c Config, authParams *AuthParams, samlResponse string, notifyCh chan int) error {
 	conf, err := c.pipe()
 	if err != nil {
 		return fmt.Errorf("openvpn: %w", err)
 	}
 	defer conf.Close()
 
-	auth, err := newTextSourcePipe(fmt.Sprintf("N/A\nCRV1::%s::%s\n", sid, samlResponse))
+	auth, err := newTextSourcePipe(fmt.Sprintf("N/A\nCRV1::%s::%s\n", authParams.HandshakeResponse.SID, samlResponse))
 	if err != nil {
 		return fmt.Errorf("openvpn: %w", err)
 	}
@@ -40,7 +40,7 @@ func Connect(ctx context.Context, c Config, sid string, samlResponse string, not
 		"--auth-nocache",
 		"--inactive", "3600",
 		"--proto", c.Proto,
-		"--remote", c.Remote, strconv.Itoa(c.Port),
+		"--remote", authParams.RemoteIP, strconv.Itoa(c.Port),
 		"--auth-user-pass", "/dev/fd/4",
 	)
 

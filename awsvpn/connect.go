@@ -9,13 +9,13 @@ import (
 
 func (a *App) connect(ctx context.Context) error {
 	log.Println("[AWS VPN] Performing SAML handshake...")
-	sid, authLink, err := openvpn.Handshake(ctx, a.cfg)
+	authParams, err := openvpn.Handshake(ctx, a.cfg)
 	if err != nil {
 		return fmt.Errorf("connect: %w", err)
 	}
 
 	log.Println("[AWS VPN] Reponse with the auth link recieved")
-	a.authLinkCh <- authLink
+	a.authLinkCh <- authParams.HandshakeResponse.AuthLink
 
 	log.Println("[AWS VPN] Waiting for SAML Response...")
 	var samlReponse string
@@ -38,7 +38,7 @@ func (a *App) connect(ctx context.Context) error {
 	}()
 
 	log.Println("[AWS VPN] SAML Response received, connecting...")
-	if err := openvpn.Connect(ctx, a.cfg, sid, samlReponse, notifyCh); err != nil {
+	if err := openvpn.Connect(ctx, a.cfg, authParams, samlReponse, notifyCh); err != nil {
 		return fmt.Errorf("connect: %w", err)
 	}
 

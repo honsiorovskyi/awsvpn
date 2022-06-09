@@ -1,4 +1,4 @@
-package awsvpn
+package openvpn
 
 import (
 	"crypto/rand"
