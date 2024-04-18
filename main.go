@@ -1,17 +1,18 @@
 package main
 
 import (
-	"awsvpn/awsvpn"
-	"awsvpn/openvpn"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"path"
 	"regexp"
 	"runtime"
 	"strconv"
+
+	"awsvpn/awsvpn"
+	"awsvpn/openvpn"
 )
 
 const (
@@ -52,7 +53,7 @@ func defaultOpenVPNClient() string {
 		return "C:\\Program Files\\OpenVPN\\OpenVPN.exe"
 	case "darwin": // using native AWS client
 		return "/Applications/AWS VPN Client/AWS VPN Client.app/Contents/Resources/openvpn/acvc-openvpn"
-	default: // assuming it's a *nix OS and we have a customly build OpenVPN client
+	default: // assuming it's a *nix OS, and we have a customly build OpenVPN client
 		return "/opt/aws-openvpn/bin/openvpn"
 	}
 }
@@ -70,7 +71,7 @@ func parseOpenVPNConfig(cmd string, cfgPath string) (*openvpn.Config, error) {
 	}
 	defer f.Close()
 
-	b, err := ioutil.ReadAll(f)
+	b, err := io.ReadAll(f)
 	if err != nil {
 		return nil, fmt.Errorf("config: %w", err)
 	}
@@ -101,6 +102,7 @@ func parseOpenVPNConfig(cmd string, cfgPath string) (*openvpn.Config, error) {
 		if err != nil {
 			return nil, fmt.Errorf("config: invalid port: %s", string(p[2]))
 		}
+
 		cfg.Port = port
 	}
 

@@ -2,6 +2,7 @@ package awsvpn
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -30,14 +31,14 @@ func (a *App) httpServer(ctx context.Context) {
 
 	go func() {
 		err := srv.ListenAndServe()
-		if err != nil && err != http.ErrServerClosed {
+		if err != nil && errors.Is(err, http.ErrServerClosed) {
 			a.busCh <- FatalErr(err)
 		}
 	}()
 
 	<-ctx.Done()
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), terminationTimeout)
+	shutdownCtx, cancel := context.WithTimeout(ctx, terminationTimeout)
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
@@ -56,7 +57,7 @@ func (a *App) httpMakeCommandHandler(cmd int) http.HandlerFunc {
 }
 
 func msg(w http.ResponseWriter, m string, args ...interface{}) {
-	fmt.Fprintf(w, `
+	_, _ = fmt.Fprintf(w, `
 		<!DOCTYPE html>
 		<html>
 		<head>
@@ -193,7 +194,7 @@ func (a *App) httpConnectHandler(w http.ResponseWriter, r *http.Request) {
 		a.busCh <- Command(CmdConnect)
 
 		log.Println("[AWS VPN] Interactive connect: opening auth link in browser...")
-		a.open(<-a.authLinkCh)
+		_ = a.open(<-a.authLinkCh)
 
 		w.WriteHeader(204)
 	}
@@ -204,13 +205,13 @@ func (a *App) httpStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch a.st.Get() {
 	case StatusDisconnected:
-		w.Write([]byte("{\"status\": \"disconnected\"}\n"))
+		_, _ = w.Write([]byte("{\"status\": \"disconnected\"}\n"))
 	case StatusConnecting:
-		w.Write([]byte("{\"status\": \"connecting\"}\n"))
+		_, _ = w.Write([]byte("{\"status\": \"connecting\"}\n"))
 	case StatusConnected:
-		w.Write([]byte("{\"status\": \"connected\"}\n"))
+		_, _ = w.Write([]byte("{\"status\": \"connected\"}\n"))
 	case StatusDisconnecting:
-		w.Write([]byte("{\"status\": \"disconnecting\"}\n"))
+		_, _ = w.Write([]byte("{\"status\": \"disconnecting\"}\n"))
 	default:
 		w.WriteHeader(500)
 	}

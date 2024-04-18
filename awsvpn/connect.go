@@ -1,20 +1,22 @@
 package awsvpn
 
 import (
-	"awsvpn/openvpn"
 	"context"
 	"fmt"
 	"log"
+
+	"awsvpn/openvpn"
 )
 
 func (a *App) connect(ctx context.Context) error {
 	log.Println("[AWS VPN] Performing SAML handshake...")
+
 	authParams, err := openvpn.Handshake(ctx, a.cfg)
 	if err != nil {
 		return fmt.Errorf("connect: %w", err)
 	}
 
-	log.Println("[AWS VPN] Reponse with the auth link recieved")
+	log.Println("[AWS VPN] Response with the auth link received")
 	a.authLinkCh <- authParams.HandshakeResponse.AuthLink
 
 	log.Println("[AWS VPN] Waiting for SAML Response...")
@@ -23,6 +25,7 @@ func (a *App) connect(ctx context.Context) error {
 	case <-ctx.Done():
 		return fmt.Errorf("connect: %w", ctx.Err())
 	case samlReponse = <-a.dataCh:
+		log.Println("[AWS VPN] SAML Response received")
 	}
 
 	notifyCh := make(chan int)
@@ -37,11 +40,12 @@ func (a *App) connect(ctx context.Context) error {
 		}
 	}()
 
-	log.Println("[AWS VPN] SAML Response received, connecting...")
+	log.Println("[AWS VPN] Connecting...")
 	if err := openvpn.Connect(ctx, a.cfg, authParams, samlReponse, notifyCh); err != nil {
 		return fmt.Errorf("connect: %w", err)
 	}
 
 	log.Println("[AWS VPN] VPN connection terminated")
+
 	return nil
 }

@@ -1,10 +1,11 @@
 package awsvpn
 
 import (
-	"awsvpn/openvpn"
 	"context"
 	"log"
 	"time"
+
+	"awsvpn/openvpn"
 )
 
 const terminationTimeout = 5 * time.Second
