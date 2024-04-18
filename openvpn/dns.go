@@ -2,7 +2,7 @@ package openvpn
 
 import (
 	"crypto/rand"
-	"encoding/base32"
+	"encoding/hex"
 	"fmt"
 	"net"
 )
@@ -14,7 +14,7 @@ func randString(l int) (string, error) {
 		return "", fmt.Errorf("randString: %w", err)
 	}
 
-	return base32.StdEncoding.EncodeToString(b), nil
+	return hex.EncodeToString(b), nil
 }
 
 func resolveRemoteIP(srv string) (string, error) {
