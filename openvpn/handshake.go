@@ -76,7 +76,8 @@ func Handshake(ctx context.Context, c Config) (*AuthParams, error) {
 		"--proto", c.Proto,
 		"--remote", remoteIP, strconv.Itoa(c.Port),
 		"--auth-user-pass", "/dev/fd/4",
-		"--connect-retry-max", "1",
+		"--connect-timeout", "2",
+		"--connect-retry-max", "10",
 	)
 
 	// cmd.Stderr = os.Stderr
