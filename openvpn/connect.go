@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -17,6 +18,20 @@ const (
 	ConnEstablished = iota
 	ConnClosed
 )
+
+// restartMDNSResponder sends SIGHUP to mDNSResponder on macOS to refresh DNS cache
+func restartMDNSResponder() {
+	if runtime.GOOS != "darwin" {
+		return
+	}
+
+	cmd := exec.Command("killall", "-HUP", "mDNSResponder")
+	if err := cmd.Run(); err != nil {
+		log.Printf("Failed to restart mDNSResponder: %v", err)
+	} else {
+		log.Println("mDNSResponder restarted successfully")
+	}
+}
 
 func Connect(ctx context.Context, c Config, authParams *AuthParams, samlResponse string, notifyCh chan int) error {
 	conf, err := c.pipe()
@@ -61,6 +76,8 @@ func Connect(ctx context.Context, c Config, authParams *AuthParams, samlResponse
 			switch {
 			case strings.Contains(sc.Text(), "Initialization Sequence Completed"):
 				notifyCh <- ConnEstablished
+				// Restart mDNSResponder on macOS after VPN connection is established
+				go restartMDNSResponder()
 			case strings.Contains(sc.Text(), "Closing TUN/TAP interface"):
 				notifyCh <- ConnClosed
 			}
